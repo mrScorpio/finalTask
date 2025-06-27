@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/mrScorpio/finalTask/internal/db"
 	"github.com/mrScorpio/finalTask/internal/server"
 	"github.com/mrScorpio/finalTask/tests"
 )
@@ -25,8 +26,12 @@ func main() {
 
 	myServ := server.NewServer(*myLog, port)
 
-	err = myServ.Serv.ListenAndServe()
+	err = db.Init("scheduler.db")
+	if err != nil {
+		myLog.Fatal(err.Error())
+	}
 
+	err = myServ.Serv.ListenAndServe()
 	if err != nil {
 		myLog.Fatal(err.Error())
 	}

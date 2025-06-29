@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/mrScorpio/finalTask/internal/handlers"
 )
 
 type MyServ struct {
@@ -16,6 +18,7 @@ func NewServer(loger log.Logger, port string) *MyServ {
 
 	//	mux.HandleFunc("/", handlers.HandleMain)
 	mux.Handle("/", http.FileServer(http.Dir("./web")))
+	mux.HandleFunc("/api/nextdate", handlers.NextDateHandler)
 
 	rdTmOut := 5 * time.Second
 	wrTmOut := 10 * time.Second

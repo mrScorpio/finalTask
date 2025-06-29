@@ -7,7 +7,16 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+type Task struct {
+	Id      int
+	Date    string
+	Title   string
+	Comment string
+	Repeat  string
+}
+
 var Db *sql.DB
+var TaskItem Task
 
 func Init(dbFileName string) error {
 	_, err := os.Stat(dbFileName)

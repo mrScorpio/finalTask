@@ -30,6 +30,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 				break
 			}
 		}
+		return date.Format("20060102"), nil
 	}
 
 	if rep[0] == "d" {
@@ -37,13 +38,17 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if interval > 400 {
+			return "", fmt.Errorf("interval is too big")
+		}
 		for {
 			date = date.AddDate(0, 0, interval)
 			if date.After(now) {
 				break
 			}
 		}
+		return date.Format("20060102"), nil
 	}
 
-	return date.Format("20060102"), nil
+	return "", nil
 }

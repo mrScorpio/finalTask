@@ -30,10 +30,10 @@ func main() {
 	if err != nil {
 		myLog.Fatal(err.Error())
 	}
+	defer db.CloseDb()
 
 	err = myServ.Serv.ListenAndServe()
 	if err != nil {
 		myLog.Fatal(err.Error())
 	}
-
 }

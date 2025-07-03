@@ -5,14 +5,18 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mrScorpio/finalTask/internal/db"
 )
+
+const TmFormat string = "20060102"
 
 func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 	if repeat == "" {
 		return "", nil
 	}
 
-	date, err := time.Parse("20060102", dstart)
+	date, err := time.Parse(TmFormat, dstart)
 	if err != nil {
 		return "", err
 	}
@@ -29,8 +33,9 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 			if date.After(now) {
 				break
 			}
+
 		}
-		return date.Format("20060102"), nil
+		return date.Format(TmFormat), nil
 	}
 
 	if rep[0] == "d" {
@@ -46,9 +51,37 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 			if date.After(now) {
 				break
 			}
+
 		}
-		return date.Format("20060102"), nil
+		return date.Format(TmFormat), nil
 	}
 
 	return "", nil
+}
+
+func CheckDate(task *db.Task) error {
+	now := time.Now()
+	if task.Date == "" {
+		task.Date = now.Format(TmFormat)
+		return nil
+	}
+
+	t, err := time.Parse(TmFormat, task.Date)
+	if err != nil {
+		return err
+	}
+
+	if now.After(t) && (task.Date != now.Format(TmFormat)) {
+		if task.Repeat == "" {
+			task.Date = now.Format(TmFormat)
+		} else {
+			next, err := NextDate(now, task.Date, task.Repeat)
+			if err != nil {
+				return err
+			}
+			task.Date = next
+		}
+	}
+
+	return nil
 }

@@ -16,9 +16,11 @@ type MyServ struct {
 func NewServer(loger log.Logger, port string) *MyServ {
 	mux := http.NewServeMux()
 
-	//	mux.HandleFunc("/", handlers.HandleMain)
 	mux.Handle("/", http.FileServer(http.Dir("./web")))
 	mux.HandleFunc("/api/nextdate", handlers.NextDateHandler)
+	mux.HandleFunc("/api/task", handlers.TaskHandler)
+	mux.HandleFunc("/api/tasks", handlers.TasksHandler)
+	mux.HandleFunc("/api/task/done", handlers.TaskDoneHandler)
 
 	rdTmOut := 5 * time.Second
 	wrTmOut := 10 * time.Second

@@ -5,8 +5,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/mrScorpio/finalTask/internal/db"
 	"github.com/mrScorpio/finalTask/internal/nextdate"
 )
@@ -14,6 +16,16 @@ import (
 // структура для вывода текста ошибки в джисоне
 type jsonError struct {
 	ErrText string `json:"error"`
+}
+
+// структура для приема пароля в джисоне
+type jsonPass struct {
+	Password string `json:"password"`
+}
+
+// структура для вывода токена в джисоне
+type jsonToken struct {
+	Token string `json:"token"`
 }
 
 // структура с указателями записей с оберткой в джисон
@@ -190,4 +202,74 @@ func TaskDoneHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	writeJson(w, w)
+}
+
+// функция проверки пароля
+func ChkPass(w http.ResponseWriter, req *http.Request) {
+	var buf bytes.Buffer
+	myPass := os.Getenv("TODO_PASSWORD")
+	// проверили что пароль задан
+	if len(myPass) < 1 {
+		return
+	}
+	// если задан, зачитали содержимое формы
+	_, err := buf.ReadFrom(req.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	pass := jsonPass{""}
+	// пробуем десериализовать в пароль
+	if err := json.Unmarshal(buf.Bytes(), &pass); err != nil {
+		writeJson(w, jsonError{ErrText: err.Error()})
+		return
+	}
+
+	if len(pass.Password) < 1 {
+		writeJson(w, jsonError{ErrText: "unauthorised access prohibited"})
+		return
+	}
+	if pass.Password == myPass {
+		jwtToken := jwt.New(jwt.SigningMethodHS256)
+
+		// получаем подписанный токен
+		signedToken, err := jwtToken.SignedString([]byte(pass.Password))
+		if err != nil {
+			writeJson(w, jsonError{ErrText: err.Error()})
+			return
+		}
+		// отвечаем токеном
+		writeJson(w, jsonToken{Token: signedToken})
+		return
+	}
+	writeJson(w, jsonError{ErrText: "wrong password"})
+}
+
+// функция аутентификации
+func Auth(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// смотрим наличие пароля
+		pass := os.Getenv("TODO_PASSWORD")
+		if len(pass) > 0 {
+			var jwtSigned string // JWT-токен из куки
+			// получаем куку
+			cookie, err := r.Cookie("token")
+			if err == nil {
+				jwtSigned = cookie.Value
+			}
+
+			// здесь код для валидации и проверки JWT-токена
+			jwtToken, err := jwt.Parse(jwtSigned, func(t *jwt.Token) (interface{}, error) {
+				// секретный ключ для всех токенов одинаковый, поэтому просто возвращаем его
+				return []byte(pass), nil
+			})
+
+			if !jwtToken.Valid || err != nil {
+				// возвращаем ошибку авторизации 401
+				http.Error(w, "Authentification required", http.StatusUnauthorized)
+				return
+			}
+		}
+		next(w, r)
+	})
 }

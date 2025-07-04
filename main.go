@@ -26,7 +26,13 @@ func main() {
 
 	myServ := server.NewServer(*myLog, port)
 
-	err = db.Init("scheduler.db")
+	dbFile := os.Getenv("TODO_DBFILE")
+
+	if dbFile == "" {
+		dbFile = "scheduler.db"
+	}
+
+	err = db.Init(dbFile)
 	if err != nil {
 		myLog.Fatal(err.Error())
 	}

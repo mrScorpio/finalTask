@@ -21,9 +21,10 @@ func NewServer(loger log.Logger, port string) *MyServ {
 
 	mux.Handle("/", http.FileServer(http.Dir("./web")))
 	mux.HandleFunc("/api/nextdate", handlers.NextDateHandler)
-	mux.HandleFunc("/api/task", handlers.TaskHandler)
-	mux.HandleFunc("/api/tasks", handlers.TasksHandler)
-	mux.HandleFunc("/api/task/done", handlers.TaskDoneHandler)
+	mux.HandleFunc("/api/task", handlers.Auth(handlers.TaskHandler))
+	mux.HandleFunc("/api/tasks", handlers.Auth(handlers.TasksHandler))
+	mux.HandleFunc("/api/task/done", handlers.Auth(handlers.TaskDoneHandler))
+	mux.HandleFunc("/api/signin", handlers.ChkPass)
 
 	serv := http.Server{
 		Addr:         ":" + port,

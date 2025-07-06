@@ -256,15 +256,18 @@ func Auth(next http.HandlerFunc) http.HandlerFunc {
 			cookie, err := r.Cookie("token")
 			if err == nil {
 				jwtSigned = cookie.Value
+			} else {
+				http.Error(w, "Authentification required", http.StatusUnauthorized)
+				return
 			}
 
 			// здесь код для валидации и проверки JWT-токена
-			jwtToken, err := jwt.Parse(jwtSigned, func(t *jwt.Token) (interface{}, error) {
+			jwtToken, jwtErr := jwt.Parse(jwtSigned, func(t *jwt.Token) (interface{}, error) {
 				// секретный ключ для всех токенов одинаковый, поэтому просто возвращаем его
 				return []byte(pass), nil
 			})
 
-			if !jwtToken.Valid || err != nil {
+			if !jwtToken.Valid || jwtErr != nil {
 				// возвращаем ошибку авторизации 401
 				http.Error(w, "Authentification required", http.StatusUnauthorized)
 				return

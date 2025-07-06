@@ -59,7 +59,93 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 		}
 		return date.Format(TmFormat), nil
 	}
+	// дни недели
+	if rep[0] == "w" {
+		weekDays := strings.Split(rep[1], ",")
 
+		for {
+			date = date.AddDate(0, 0, 1)
+			weekDayMatch := false
+			for _, v := range weekDays {
+				weekDayNum, err := strconv.Atoi(v)
+				if err != nil {
+					return "", err
+				}
+				if weekDayNum > 7 || weekDayNum < 0 {
+					return "", fmt.Errorf("wrong weekday number")
+				}
+				if weekDayNum == 7 {
+					weekDayNum = 0
+				}
+				if date.Weekday() == time.Weekday(weekDayNum) {
+					weekDayMatch = true
+					break
+				}
+			}
+			if date.After(now) && weekDayMatch {
+				break
+			}
+
+		}
+		return date.Format(TmFormat), nil
+	}
+
+	// дни месяца
+	if rep[0] == "m" {
+		monthDays := strings.Split(rep[1], ",")
+
+		monthMatch := true
+		monthNums := make([]string, 0, 12)
+		if len(rep) > 2 {
+			monthNums = strings.Split(rep[2], ",")
+			monthMatch = false
+		}
+		for {
+			date = date.AddDate(0, 0, 1)
+			monthDayMatch := false
+
+			for _, v := range monthDays {
+				monthDay, err := strconv.Atoi(v)
+
+				if err != nil {
+					return "", err
+				}
+
+				if monthDay > 31 || monthDay < -2 || monthDay == 0 {
+					return "", fmt.Errorf("monthday number is bad")
+				}
+
+				if monthDay == -2 || monthDay == -1 {
+					return "", fmt.Errorf("monthday number is bad")
+				}
+
+				if date.Day() == monthDay {
+					monthDayMatch = true
+					break
+				}
+			}
+
+			for _, v := range monthNums {
+				monthNum, err := strconv.Atoi(v)
+				if err != nil {
+					return "", err
+				}
+				if monthNum > 12 || monthNum < 1 {
+					return "", fmt.Errorf("month num is wrong")
+				}
+				if date.Month() == time.Month(monthNum) {
+					monthMatch = true
+					break
+				}
+			}
+
+			if date.After(now) && monthDayMatch && monthMatch {
+				break
+			}
+
+		}
+		return date.Format(TmFormat), nil
+	}
 	return "", nil
 }
 

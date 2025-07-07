@@ -45,7 +45,7 @@ func NextDateHandler(w http.ResponseWriter, req *http.Request) {
 		if curTmStr == "" {
 			curTm = time.Now()
 		} else {
-			curTm, err = time.Parse(nextdate.TmFormat, curTmStr)
+			curTm, err = time.Parse(db.TmFormat, curTmStr)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
@@ -140,11 +140,24 @@ func TaskHandler(w http.ResponseWriter, req *http.Request) {
 
 // хэндлер вывода списка задач из базы в джисон
 func TasksHandler(w http.ResponseWriter, req *http.Request) {
-	tasks, err := db.Tasks(66)
-	if err != nil {
-		writeJson(w, jsonError{ErrText: err.Error()})
-		return
+	searchStr := req.FormValue("search")
+	limit := 66
+	var tasks []*db.Task
+	var err error
+	if len(searchStr) > 0 {
+		tasks, err = db.TasksSearchStr(limit, searchStr)
+		if err != nil {
+			writeJson(w, jsonError{ErrText: err.Error()})
+			return
+		}
+	} else {
+		tasks, err = db.Tasks(limit)
+		if err != nil {
+			writeJson(w, jsonError{ErrText: err.Error()})
+			return
+		}
 	}
+
 	writeJson(w, taskResp{Tasks: tasks})
 }
 
@@ -185,7 +198,7 @@ func TaskDoneHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// если правило есть, то анализируем дату
-	tm, err := time.Parse(nextdate.TmFormat, task.Date)
+	tm, err := time.Parse(db.TmFormat, task.Date)
 	if err != nil {
 		writeJson(w, jsonError{ErrText: err.Error()})
 		return

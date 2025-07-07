@@ -10,9 +10,6 @@ import (
 	"github.com/mrScorpio/finalTask/internal/db"
 )
 
-// формат хранения даты в строке
-const TmFormat string = "20060102"
-
 // функция возвращает новую дату для задачи, принимает (текущее время, дата задачи, правило повторения)
 func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 	// если правило повторения пустое, ничего не делаем
@@ -20,7 +17,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 		return "", nil
 	}
 	// преобразуем строку с датой в переменную типа тайм
-	date, err := time.Parse(TmFormat, dstart)
+	date, err := time.Parse(db.TmFormat, dstart)
 	if err != nil {
 		return "", err
 	}
@@ -30,7 +27,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 	if rep[0] != "y" && len(rep) < 2 {
 		return "", fmt.Errorf("wrong repeat format")
 	}
-	// добавляем год
+	// повторяем год
 	if rep[0] == "y" {
 		for {
 			date = date.AddDate(1, 0, 0)
@@ -39,9 +36,9 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 			}
 
 		}
-		return date.Format(TmFormat), nil
+		return date.Format(db.TmFormat), nil
 	}
-	// добавляем дни
+	// повторяем дни
 	if rep[0] == "d" {
 		interval, err := strconv.Atoi(rep[1])
 		if err != nil {
@@ -57,13 +54,14 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 			}
 
 		}
-		return date.Format(TmFormat), nil
+		return date.Format(db.TmFormat), nil
 	}
-	// дни недели
+	// повторяем дни недели
 	if rep[0] == "w" {
 		weekDays := strings.Split(rep[1], ",")
 
 		for {
+			// приращаем дату
 			date = date.AddDate(0, 0, 1)
 			weekDayMatch := false
 			for _, v := range weekDays {
@@ -71,80 +69,97 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 				if err != nil {
 					return "", err
 				}
+				// если левый номер дня
 				if weekDayNum > 7 || weekDayNum < 0 {
 					return "", fmt.Errorf("wrong weekday number")
 				}
+				// воскресенье в буржуйский формат
 				if weekDayNum == 7 {
 					weekDayNum = 0
 				}
+				// если нашли
 				if date.Weekday() == time.Weekday(weekDayNum) {
 					weekDayMatch = true
 					break
 				}
 			}
+			// все совпало - прекращаем поиск
 			if date.After(now) && weekDayMatch {
 				break
 			}
 
 		}
-		return date.Format(TmFormat), nil
+		return date.Format(db.TmFormat), nil
 	}
 
-	// дни месяца
+	// повторяем дни месяца
 	if rep[0] == "m" {
 		monthDays := strings.Split(rep[1], ",")
-
+		// по-умолчанию месяц правильный
 		monthMatch := true
 		monthNums := make([]string, 0, 12)
+
 		if len(rep) > 2 {
 			monthNums = strings.Split(rep[2], ",")
+			// но если есть задание месяца в правиле, то нужно проверить
 			monthMatch = false
 		}
 		for {
+			// приращаем дату
 			date = date.AddDate(0, 0, 1)
 			monthDayMatch := false
-
+			prev := false
+			postPrev := false
+			// цикл для проверки дня
 			for _, v := range monthDays {
 				monthDay, err := strconv.Atoi(v)
-
 				if err != nil {
 					return "", err
 				}
-
+				// если левое число
 				if monthDay > 31 || monthDay < -2 || monthDay == 0 {
 					return "", fmt.Errorf("monthday number is bad")
 				}
-
-				if monthDay == -2 || monthDay == -1 {
-					return "", fmt.Errorf("monthday number is bad")
+				// если предпоследнее число
+				if monthDay == -2 && date.AddDate(0, 0, 2).Day() == 1 {
+					postPrev = true
 				}
-
+				// если последнее
+				if monthDay == -1 && date.AddDate(0, 0, 1).Day() == 1 {
+					prev = true
+				}
+				// если нашли день
 				if date.Day() == monthDay {
 					monthDayMatch = true
 					break
 				}
 			}
 
-			for _, v := range monthNums {
-				monthNum, err := strconv.Atoi(v)
-				if err != nil {
-					return "", err
-				}
-				if monthNum > 12 || monthNum < 1 {
-					return "", fmt.Errorf("month num is wrong")
-				}
-				if date.Month() == time.Month(monthNum) {
-					monthMatch = true
-					break
+			if !monthMatch {
+				// цикл для проверки месяца
+				for _, v := range monthNums {
+					monthNum, err := strconv.Atoi(v)
+					if err != nil {
+						return "", err
+					}
+					// если левый месяц
+					if monthNum > 12 || monthNum < 1 {
+						return "", fmt.Errorf("month num is wrong")
+					}
+					// если нашли месяц
+					if date.Month() == time.Month(monthNum) && date.Year() == now.Year() {
+						monthMatch = true
+						break
+					}
 				}
 			}
-
-			if date.After(now) && monthDayMatch && monthMatch {
+			// все совпало - прекращаем поиск
+			if date.After(now) && (monthDayMatch || postPrev || prev) && monthMatch {
 				break
 			}
 
 		}
-		return date.Format(TmFormat), nil
+		return date.Format(db.TmFormat), nil
 	}
 	return "", nil
 }
@@ -154,19 +169,19 @@ func CheckDate(task *db.Task) error {
 	now := time.Now()
 	//если дата пустая, кидаем текущую
 	if task.Date == "" {
-		task.Date = now.Format(TmFormat)
+		task.Date = now.Format(db.TmFormat)
 		return nil
 	}
 	//преобразуем в тайм
-	t, err := time.Parse(TmFormat, task.Date)
+	t, err := time.Parse(db.TmFormat, task.Date)
 	if err != nil {
 		return err
 	}
 	// если сейчас время больше, чем то, что в задаче, то актуализируем его
-	if now.After(t) && (task.Date != now.Format(TmFormat)) {
+	if now.After(t) && (task.Date != now.Format(db.TmFormat)) {
 		if task.Repeat == "" {
 			// правило повторения пустое - пишем текущую дату
-			task.Date = now.Format(TmFormat)
+			task.Date = now.Format(db.TmFormat)
 		} else {
 			// правило есть - используем функцию расчета новой даты
 			next, err := NextDate(now, task.Date, task.Repeat)

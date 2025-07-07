@@ -6,9 +6,13 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
+
+// формат хранения даты в строке
+const TmFormat string = "20060102"
 
 var db *sql.DB
 
@@ -172,4 +176,36 @@ func UpDateTask(next string, id string) error {
 		return fmt.Errorf("incorrect id")
 	}
 	return nil
+}
+
+// функция поиска записей в базе по словам в заголовке и коментах или дате формата 02.01.2006
+func TasksSearchStr(limit int, str string) ([]*Task, error) {
+	// слайс, в который читаем
+	tasks := make([]*Task, 0, limit)
+	query := "SELECT * FROM scheduler WHERE title LIKE :search OR comment LIKE :search ORDER BY date LIMIT :limit"
+	search := "%" + str + "%"
+	// если задана дата в нужном формате, то меняем запрос
+	date, err := time.Parse("02.01.2006", str)
+	if err == nil {
+		search = date.Format(TmFormat)
+		query = "SELECT * FROM scheduler WHERE date = :search ORDER BY date LIMIT :limit"
+	}
+	// эскуэль запрос
+	rows, err := db.Query(query, sql.Named("search", search), sql.Named("limit", limit))
+	if err != nil {
+		return tasks, err
+	}
+	defer rows.Close()
+	// бежим по строкам
+	for rows.Next() {
+		task := Task{}
+		err := rows.Scan(&task.Id, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+		if err != nil {
+			return tasks, err
+		}
+		//и заполняем слайс
+		tasks = append(tasks, &task)
+	}
+
+	return tasks, nil
 }

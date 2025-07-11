@@ -36,29 +36,31 @@ type taskResp struct {
 // хэндлер проверки работы nextdate.NextDate(...)
 func NextDateHandler(w http.ResponseWriter, req *http.Request) {
 
-	if req.Method == http.MethodGet {
-		curTmStr := req.FormValue("now")
+	if req.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	curTmStr := req.FormValue("now")
 
-		var curTm time.Time
-		var err error
+	var curTm time.Time
+	var err error
 
-		if curTmStr == "" {
-			curTm = time.Now()
-		} else {
-			curTm, err = time.Parse(db.TmFormat, curTmStr)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-		}
-
-		res, err := nextdate.NextDate(curTm, req.FormValue("date"), req.FormValue("repeat"))
+	if curTmStr == "" {
+		curTm = time.Now()
+	} else {
+		curTm, err = time.Parse(db.TmFormat, curTmStr)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadGateway)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		w.Write([]byte(res))
 	}
+
+	res, err := nextdate.NextDate(curTm, req.FormValue("date"), req.FormValue("repeat"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Write([]byte(res))
 }
 
 // хэндлер обработки задачи
@@ -102,13 +104,6 @@ func TaskHandler(w http.ResponseWriter, req *http.Request) {
 		writeJson(w, task)
 
 	case http.MethodGet:
-		/*
-			id, err := strconv.Atoi(req.FormValue("id"))
-			if err != nil {
-				writeJson(w, jsonError{ErrText: err.Error()})
-				return
-			}
-		*/
 		//если гет-, то достаем из базы по айди
 		task, err := db.GetTask(req.FormValue("id"))
 		if err != nil {
@@ -169,18 +164,14 @@ func writeJson(w http.ResponseWriter, data any) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if _, ok := data.(jsonError); ok {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+	}
 	w.Write(resp)
 }
 
 // хэндлер обработки запроса о выполнении задачи
 func TaskDoneHandler(w http.ResponseWriter, req *http.Request) {
-	/*
-		id, err := strconv.Atoi(req.FormValue("id"))
-		if err != nil {
-			writeJson(w, jsonError{ErrText: err.Error()})
-			return
-		}
-	*/
 	// зачитали задачу из базы
 	task, err := db.GetTask(req.FormValue("id"))
 	if err != nil {

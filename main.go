@@ -13,7 +13,7 @@ import (
 func main() {
 	logFile, err := os.OpenFile(`server.log`, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("can't open log-file: %w", err))
 	}
 	defer logFile.Close()
 
@@ -40,6 +40,6 @@ func main() {
 
 	err = myServ.Serv.ListenAndServe()
 	if err != nil {
-		myLog.Fatal(err.Error())
+		myLog.Fatal(fmt.Errorf("server won't start: %w", err))
 	}
 }

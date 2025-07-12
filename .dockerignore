@@ -1,0 +1,4 @@
+*.db
+*.log
+README.md
+Dockerfile

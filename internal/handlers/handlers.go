@@ -164,9 +164,11 @@ func writeJson(w http.ResponseWriter, data any) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	if _, ok := data.(jsonError); ok {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, "", http.StatusBadRequest)
 	}
+
 	w.Write(resp)
 }
 
